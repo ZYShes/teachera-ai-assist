@@ -8,8 +8,8 @@ export interface Message {
   role: 'user' | 'assistant' | 'thinking'
   content: string
   created_at: string
+  
 }
-
 
 export interface MessageData {
   id: number;
@@ -21,6 +21,7 @@ export interface MessageData {
   timestamp: string;
   image?: string;
   // chunks?: string[];
+  durationInSeconds?: number // 新增：思考耗时（秒），可选字段
 }
 export interface ConversationContentProps {
   conversationId: number;
@@ -28,6 +29,7 @@ export interface ConversationContentProps {
   onDelete: (id: number) => void;
   onFavorite: (id: number) => void;
   isFavorited: boolean;
+  onToggleHtmlPanel?: () => void // 新增：切换HTML预览面板的回调函数
 }
 
 export interface MessageQuery {

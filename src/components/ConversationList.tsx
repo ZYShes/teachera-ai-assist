@@ -28,7 +28,7 @@ const ConversationList = forwardRef(({
         limit: 100
       })
       console.info('获取会话列表:', data)
-      setConversations(data.map((conv, i) => ({ ...conv, active: i === 0 })))
+      setConversations(data.map((conv) => ({ ...conv, active: false })))
     } catch (error) {
       console.error('获取会话列表失败:', error)
     } finally {
@@ -91,7 +91,8 @@ const ConversationList = forwardRef(({
   };
 
   return (
-    <div className="h-full overflow-y-auto mt-5 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+    //加滚动条
+    <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-[#4DABF7] scrollbar-track-gray-100 scrollbar-thumb-rounded-full">
       {conversations.map((conversation, index) => (
         <div
           key={conversation.id}

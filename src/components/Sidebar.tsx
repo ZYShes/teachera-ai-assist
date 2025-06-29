@@ -35,14 +35,14 @@ const Sidebar = ({
     conversationsList.current.fetchData()
   }
   return (
-    <aside className="w-80 bg-white rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] p-6 flex flex-col h-full lg:h-[calc(100vh-120px)]">
+    <aside className="w-full h-full bg-white p-6 flex flex-col">
       <div className="flex flex-col gap-5 pb-5 border-b border-gray-200">
-        <div className="text-lg font-semibold text-primary flex items-center gap-2.5">
+        {/* <div className="text-lg font-semibold text-primary flex items-center gap-2.5">
           <div className="w-5 h-5 bg-primary rounded-sm flex items-center justify-center">
             <div className="w-2 h-2 bg-white rounded-full"></div>
-          </div>
-          <span>与TeacherA对话</span>
-        </div>
+          </div> 
+          <span>与TeacherA对话</span> 
+        </div> */}
         <button 
           onClick={handleNewChat}
           className="bg-gradient-to-r from-primary to-accent text-white border-none px-5 py-2.5 rounded-xl font-medium cursor-pointer transition-all duration-300 flex items-center gap-2 shadow-[0_4px_12px_rgba(67,97,238,0.3)] hover:transform hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(67,97,238,0.4)] flex items-center justify-center gap-2 text-base"

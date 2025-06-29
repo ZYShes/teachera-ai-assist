@@ -16,12 +16,16 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-white px-6 py-4 shadow-[0_4px_20px_rgba(0,0,0,0.08)] flex justify-between items-center sticky top-0 z-50">
+    <header className="bg-gradient-to-r from-primary to-accent px-6 py-4 shadow-[0_4px_20px_rgba(0,0,0,0.08)] flex justify-between items-center sticky top-0 z-50">
       <div className="flex items-center gap-3">
-        <div className="bg-gradient-to-br from-primary to-secondary text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg">
-          A
-        </div>
-        <div className="text-xl font-bold text-primary tracking-tight">
+        <img
+            src="public\logo.png" 
+            alt="TeacherA Logo"
+            width={40}
+            height={40}
+            className="rounded-full" 
+        />
+        <div className="text-xl font-bold text-white tracking-tight">
           TeacherA
         </div>
       </div>
@@ -30,7 +34,7 @@ const Header = () => {
         {isLoggedIn ? (
           <button 
             onClick={handleLogout}
-            className="bg-gradient-to-r from-primary to-accent text-white border-none px-5 py-2.5 rounded-xl font-medium cursor-pointer transition-all duration-300 flex items-center gap-2 shadow-[0_4px_12px_rgba(67,97,238,0.3)] hover:transform hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(67,97,238,0.4)]"
+            className="bg-white text-primary border-none px-5 py-2.5 rounded-xl font-medium cursor-pointer transition-all duration-300 flex items-center gap-2 shadow-[0_4px_12px_rgba(67,97,238,0.3)] hover:transform hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(67,97,238,0.4)]"
           >
             <User className="w-4 h-4" />
             退出

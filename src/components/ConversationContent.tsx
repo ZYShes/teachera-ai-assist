@@ -1,14 +1,25 @@
-import { useState, useRef, useEffect } from "react";
-import { Heart, Trash2, MoreVertical, Send, Copy, Image, Code, Eye, Loader2 } from "lucide-react";
-import { getMessageList, chat, ConversationContentProps, MessageData } from '../api/chat'
-import { ConversationData, getConversationList } from "@/api/conversation";
-import { ScrollArea } from "./ui/scroll-area";
-import { toast } from "@/hooks/use-toast";
+import type React from "react"
+import { useState, useRef, useEffect } from "react"
+import { Heart, Trash2, MoreVertical, Send, ImageIcon, Code, Eye, Loader2, Paperclip } from "lucide-react"
+import { ConversationContentProps, MessageData } from "../api/chat"
+import { ScrollArea } from "./ui/scroll-area"
 import ReactMarkdown from "react-markdown"
 import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import remarkGfm from "remark-gfm"
-import useHtmlStore from '@/store/store';
+import useHtmlStore from "@/store/store" 
+import { ReasoningBlock } from "./ui/reasoning-block" 
+import FileModal from "./ui/file-modal"
+
+
+// 扩展 ConversationContentProps 接口
+interface ExtendedConversationContentProps extends ConversationContentProps {
+  onHtmlContentUpdate?: (content: string) => void
+  hasHtmlContent?: boolean
+  showHtmlPreview?: boolean
+  onToggleHtmlPreview?: () => void
+}
+
 
 const test_data: MessageData[] = [
   {
@@ -64,23 +75,23 @@ const test_data: MessageData[] = [
                 border-radius: 8px;
                 box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             }
-    
+
             h1 {
                 color: #333;
                 margin-bottom: 20px;
             }
-    
+
             .control-group {
                 margin-bottom: 20px;
             }
-    
+
             .control-group h3 {
                 margin-top: 0;
                 color: #444;
                 border-bottom: 1px solid #eee;
                 padding-bottom: 8px;
             }
-    
+
             button {
                 background-color: #4CAF50;
                 color: white;
@@ -92,41 +103,41 @@ const test_data: MessageData[] = [
                 font-size: 14px;
                 transition: background-color 0.3s;
             }
-    
+
             button:hover {
                 background-color: #45a049;
             }
-    
+
             button.toggle {
                 background-color: #2196F3;
             }
-    
+
             button.toggle:hover {
                 background-color: #0b7dda;
             }
-    
+
             button.reset {
                 background-color: #f44336;
             }
-    
+
             button.reset:hover {
                 background-color: #d32f2f;
             }
-    
+
             .slider-container {
                 margin: 15px 0;
             }
-    
+
             .slider-container label {
                 display: block;
                 margin-bottom: 5px;
                 font-weight: 500;
             }
-    
+
             input[type="range"] {
                 width: 100%;
             }
-    
+
             .value-display {
                 font-size: 14px;
                 color: #666;
@@ -145,7 +156,7 @@ const test_data: MessageData[] = [
                     <button id="toggleDerivative">显示/隐藏导数函数</button>
                     <button class="reset" id="resetAll">重置所有</button>
                 </div>
-    
+
                 <div class="control-group">
                     <h3>参数控制</h3>
                     <div class="slider-container">
@@ -154,13 +165,13 @@ const test_data: MessageData[] = [
                         <div class="value-display">当前值: <span id="kValue">0.1</span></div>
                     </div>
                 </div>
-    
+
                 <div class="control-group">
                     <h3>点控制</h3>
                     <button id="toggleP1">显示/隐藏极值点 P1</button>
                     <button id="toggleP2">显示/隐藏零点 P2</button>
                 </div>
-    
+
                 <div class="control-group">
                     <h3>辅助函数控制</h3>
                     <button id="toggleGfunc">显示/隐藏 g_func(x)</button>
@@ -168,7 +179,7 @@ const test_data: MessageData[] = [
                 </div>
             </div>
         </div>
-    
+
         <script src="https://cdn.geogebra.org/apps/deployggb.js"></script>
         <script>
             // GeoGebra parameters
@@ -204,111 +215,111 @@ const test_data: MessageData[] = [
                     initializeGeoGebra();
                 }
             };
-    
+
             // Initialize GeoGebra
             window.addEventListener('load', function() {
                 var applet = new GGBApplet(parameters, true);
                 applet.inject('ggb-element');
             });
-    
+
             // Initialize GeoGebra objects
             function initializeGeoGebra() {
                 // Create slider for k
                 ggbApp.evalCommand('k=Slider(0.01,0.33,0.01,1,140,false,true,false,false)');
                 ggbApp.evalCommand('SetValue(k,0.1)');
-    
+
                 // Main function
                 ggbApp.evalCommand('f(x)=ln(1+x)-x+0.5x^2-kx^3');
-    
+
                 // Derivative function (hidden by default)
                 ggbApp.evalCommand('f_prime(x)=x^2(1/(1+x)-3k)');
                 ggbApp.evalCommand('SetVisibleInView(f_prime,1,false)');
                 ggbApp.evalCommand('SetLabel(f_prime,"derivative")');
-    
+
                 // Helper function g_func (hidden)
                 ggbApp.evalCommand('g_func(x)=1/(1+x)-3k');
                 ggbApp.evalCommand('SetVisibleInView(g_func,1,false)');
                 ggbApp.evalCommand('SetLabel(g_func,"g_function")');
-    
+
                 // x1 value (hidden)
                 ggbApp.evalCommand('x1_val=1/(3k)-1');
                 ggbApp.evalCommand('SetVisibleInView(x1_val,1,false)');
                 ggbApp.evalCommand('SetLabel(x1_val,"x1_value")');
-    
+
                 // Point P1 (visible)
                 ggbApp.evalCommand('P1=(x1_val,f(x1_val))');
                 ggbApp.evalCommand('SetLabel(P1,"P1_extreme_point")');
-    
+
                 // x2 value (hidden)
                 ggbApp.evalCommand('x2_val=NSolve(f(x)=0,x,x1_val+0.1,100)');
                 ggbApp.evalCommand('SetVisibleInView(x2_val,1,false)');
                 ggbApp.evalCommand('SetLabel(x2_val,"x2_root")');
-    
+
                 // Point P2 (visible)
                 ggbApp.evalCommand('P2=(x2_val,0)');
                 ggbApp.evalCommand('SetLabel(P2,"P2_zero_point")');
-    
+
                 // Helper function g_t (hidden)
                 ggbApp.evalCommand('g_t(t)=f(x1_val+t)-f(x1_val-t)');
                 ggbApp.evalCommand('SetVisibleInView(g_t,1,false)');
                 ggbApp.evalCommand('SetLabel(g_t,"g_t_function")');
-    
+
                 // Update k value display
                 updateKValue();
             }
-    
+
             // UI Controls
             document.getElementById('toggleMainFunction').addEventListener('click', function() {
                 const visible = ggbApp.getVisible('f', 1);
                 ggbApp.setVisible('f', 1, !visible);
             });
-    
+
             document.getElementById('toggleDerivative').addEventListener('click', function() {
                 const visible = ggbApp.getVisible('f_prime', 1);
                 ggbApp.setVisible('f_prime', 1, !visible);
             });
-    
+
             document.getElementById('toggleP1').addEventListener('click', function() {
                 const visible = ggbApp.getVisible('P1', 1);
                 ggbApp.setVisible('P1', 1, !visible);
             });
-    
+
             document.getElementById('toggleP2').addEventListener('click', function() {
                 const visible = ggbApp.getVisible('P2', 1);
                 ggbApp.setVisible('P2', 1, !visible);
             });
-    
+
             document.getElementById('toggleGfunc').addEventListener('click', function() {
                 const visible = ggbApp.getVisible('g_func', 1);
                 ggbApp.setVisible('g_func', 1, !visible);
             });
-    
+
             document.getElementById('toggleGt').addEventListener('click', function() {
                 const visible = ggbApp.getVisible('g_t', 1);
                 ggbApp.setVisible('g_t', 1, !visible);
             });
-    
+
             document.getElementById('resetAll').addEventListener('click', function() {
                 ggbApp.reset();
                 initializeGeoGebra();
             });
-    
+
             // Slider control for k
             const kSlider = document.getElementById('kSlider');
             kSlider.addEventListener('input', function() {
                 const value = parseFloat(this.value).toFixed(2);
                 ggbApp.evalCommand('SetValue(k,' + value + ')');
                 updateKValue();
-    
+
                 // Update dependent objects
                 ggbApp.evalCommand('UpdateConstruction()');
             });
-    
+
             function updateKValue() {
                 const kValue = ggbApp.getValue('k');
                 document.getElementById('kValue').textContent = kValue.toFixed(2);
             }
-    
+
             // Handle window resize
             window.addEventListener('resize', function() {
                 if (typeof ggbApp !== 'undefined' && typeof ggbApp.recalculateEnvironments === 'function') {
@@ -318,11 +329,12 @@ const test_data: MessageData[] = [
         </script>
     </body>
     </html>
-    `
+    `,
+    durationInSeconds: 19, // 模拟思考耗时
   },
   {
     id: 3,
-    type: 'user',
+     type: 'user',
     answer: '能给我一个具体的例子吗？',
     timestamp: '14:32'
   },
@@ -331,14 +343,18 @@ const test_data: MessageData[] = [
     type: 'assistant',
     answer: '当然可以！让我们看一个具体例子：f(x) = 2x² - 4x + 1',
     timestamp: '14:33',
-  }
+    durationInSeconds: 19,//test
+  },
 ]
-const ConversationContent = ({
+
+const ConversationContent  = ({
   conversationId,
   title,
   onDelete,
   onFavorite,
-  isFavorited
+  isFavorited,
+  onToggleHtmlPanel, // 新增的prop
+
 }: ConversationContentProps) => {
   const [showActions, setShowActions] = useState(false);
   const [newMessage, setNewMessage] = useState("");
@@ -347,7 +363,13 @@ const ConversationContent = ({
   const [showHtmlSource, setShowHtmlSource] = useState<{ [key: number]: boolean }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [enableDeepThinking, setEnableDeepThinking] = useState(true);
-  // 从 store 获取状态和方法
+
+  
+
+  // 在现有的 useRef 声明后添加
+  const prevHtmlContentRef = useRef<string>("")
+
+   // 从 store 获取状态和方法
   const { htmlCode, reset } = useHtmlStore();
   
   // 示例重置函数
@@ -408,7 +430,7 @@ const ConversationContent = ({
   };
 
   const [abortController, setAbortController] = useState<AbortController | null>(null);
-
+  
   // 删除重复的handleSendMessage函数
   const handleSend = async () => {
     if (!newMessage.trim() || !conversationId) return;
@@ -570,20 +592,73 @@ const ConversationContent = ({
     }));
   };
 
+  // 监听HTML内容变化，自动显示预览面板
+  useEffect(() => {
+    const latestMessage = messages.filter((msg) => msg.type === "assistant" && msg.htmlContent).pop()
+    const currentHtmlContent = latestMessage?.htmlContent || ""
+
+    // 如果有新的HTML内容生成（之前没有，现在有了）
+    if (currentHtmlContent && currentHtmlContent !== prevHtmlContentRef.current) {
+      // 更新store中的HTML内容
+      handleReset(currentHtmlContent)
+
+      // 自动打开HTML预览面板
+      if (onToggleHtmlPanel) {
+        onToggleHtmlPanel()
+      }
+
+      // 更新ref中的值
+      prevHtmlContentRef.current = currentHtmlContent
+    }
+  }, [messages, onToggleHtmlPanel])
+
+
+  //计算html大小
+  const formatHtmlSize = (html: string): string => {
+    const sizeInBytes = new Blob([html]).size;
+    if (sizeInBytes < 1024) {
+      return `${sizeInBytes} B`;
+    } else if (sizeInBytes < 1024 * 1024) {
+      return `${(sizeInBytes / 1024).toFixed(2)} KB`;
+    } else {
+      return `${(sizeInBytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+  };
+
+  //显示所有文件
+  const [fileModalOpen, setFileModalOpen] = useState(false)
+  //例子
+  const exampleFiles: {
+    name: string
+    type: "code" | "image" | "document" | "link"
+    date?: string
+  }[] = [
+    {
+      name: "trigonometric_functions.html",
+      type: "code",
+      date: "Thursday"
+    }
+  ]
+
+
+
   return (
     <div className="flex flex-col h-full">
       {/* 对话标题和操作按钮 */}
       <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white rounded-t-xl">
         <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-        <div className="relative">
-          <button
-            onClick={() => setShowActions(!showActions)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <MoreVertical className="w-5 h-5" />
-          </button>
+        <div className="flex items-center gap-2">
+          {/* 移除HTML预览切换按钮 */}
 
-          {showActions && (
+          <div className="relative">
+            <button
+              onClick={() => setShowActions(!showActions)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+
+            {showActions && (
             <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-10 min-w-[120px]">
               <button
                 onClick={handleFavorite}
@@ -592,155 +667,154 @@ const ConversationContent = ({
               >
                 <Heart className={`w-4 h-4 ${isFavorited ? 'fill-current' : ''}`} />
                 {isFavorited ? '取消收藏' : '收藏'}
-              </button>
-              <button
-                onClick={handleDelete}
-                className="w-full px-4 py-2 text-left flex items-center gap-2 text-red-600 hover:bg-gray-50 rounded-b-lg"
-              >
-                <Trash2 className="w-4 h-4" />
-                删除
-              </button>
-            </div>
-          )}
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="w-full px-4 py-2 text-left flex items-center gap-2 text-red-600 hover:bg-gray-50 rounded-b-lg"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  删除
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* 对话内容 */}
-
-      <div className="p-6 space-y-4 bg-gray-50 h-[calc(100vh-350px)] overflow-y-auto">
+      <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
         <ScrollArea ref={scrollRef} className="flex-1 p-4">
-          {messages && messages.map((message) => (
-            message &&
-            <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-              {/* 用户消息 */}
-              {message.type === 'user' ? (
-                <div>
-                  {/* 用户上传的图片 */}
-                  {message.image && (
-                    <img
-                      src={message.image}
-                      alt="上传的图片"
-                      className="max-w-full h-auto rounded-lg mb-2"
-                    />
-                  )}
-                  <div className="p-4 rounded-lg relative bg-primary text-white shadow-sm">{message.answer}</div>
-                  <div className='text-xs text-gray-500 mt-1 text-right'>
-                    {message.timestamp}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex-1">
-                  {/* 深度思考部分 */}
-                  {message.reasoning && (
-                    <div className="max-w-[80%] w-full">
-                      <div className="p-3 bg-blue-50 rounded-lg">
-                        {message.isStreaming && (
-                          <div className="flex items-center space-x-2 text-blue-600">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span className="text-sm">思考中...</span>
-                          </div>
-                        )}
-                        <div className="text-sm text-blue-500">{message.reasoning}</div>
-                      </div>
-                    </div>
-                  )}
-                  <div className='max-w-[95%] order-1 mt-2'>
-                    <div className='p-4 rounded-lg relative bg-white text-gray-900 shadow-sm'>
-                      {message.isStreaming && (
-                        <div className="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center">
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        </div>
-                      )}
-                      {/* HTML内容渲染或源码显示 */}
-                      {message.htmlContent && message.type === 'assistant' && (
-                        <div className="mb-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-600">生成内容:</span>
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(message.htmlContent);
-                                  toast({ title: '已复制到剪贴板', description: '内容已复制' });
-                                }}
-                                className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700"
-                                title="复制内容"
-                              >
-                                <Copy className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => toggleHtmlSource(message.id)}
-                                className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700"
-                                title={showHtmlSource[message.id] ? "查看渲染结果" : "查看HTML源码"}
-                              >
-                                {showHtmlSource[message.id] ? <Eye className="w-4 h-4" /> : <Code className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-
-                          {showHtmlSource[message.id] ? (
-                            <pre className="bg-gray-800 text-green-400 p-3 rounded text-sm overflow-x-auto w-[100%]">
-                              <code>{message.htmlContent}</code>
-                            </pre>
-                          ) : (
-                            <iframe
-                              srcDoc={message.htmlContent}
-                              height="800"
-                              className="border rounded-lg w-full"
-                              sandbox="allow-scripts allow-same-origin"
-                            />
-                          )}
-                        </div>
-                      )}
-                      <div className="markdown-content whitespace-pre-wrap break-words">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkMath, remarkGfm]}
-                          rehypePlugins={[rehypeKatex]}
-                          components={{
-                            a: ({ node, ...props }) => (
-                              <a
-                                {...props}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-500 hover:underline"
-                              />
-                            ),
-                            code: ({ node, className, children, ...props }) => {
-                              return (
-                                <div className="bg-gray-100 dark:bg-gray-900 rounded-md my-1 overflow-x-auto">
-                                  <code className="block p-2 text-sm text-black-100" {...props}>
-                                    {children}
-                                  </code>
-                                </div>
-                              )
-                            },
-                          }}
-                        >
-                          {message.answer}
-                        </ReactMarkdown>
-                      </div>
-                    </div>
-                    <div className='text-xs text-gray-500 mt-1 text-left'>
+          <div className="max-w-4xl mx-auto space-y-6">
+            {messages && messages.map((message) => (
+              message &&
+              <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {/* 用户消息 */}
+                {message.type === 'user' ? (
+                  <div className="max-w-[80%]">
+                    {/* 用户上传的图片 */}
+                    {message.image && (
+                      <img
+                        src={message.image}
+                        alt="上传的图片"
+                        className="max-w-full h-auto rounded-lg mb-2"
+                      />
+                    )}
+                    <div className="p-4 rounded-lg relative bg-primary text-white shadow-sm">{message.answer}</div>
+                    <div className='text-xs text-gray-500 mt-1 text-right'>
                       {message.timestamp}
                     </div>
                   </div>
-                </div>
+                ) : (
+                        <div className="flex-1">
+                          {/* 深度思考部分 */}
+                          {message.reasoning && (
+                            <div className="max-w-[95%] w-full mb-3">
+                              <ReasoningBlock
+                                reasoning={message.reasoning}
+                                isStreaming={!!message.isStreaming}
+                                durationInSeconds={message.durationInSeconds}
+                              />
+                            </div>
+                          )}
+                          <div className="max-w-[95%] order-1 mt-2">
+                            <div className="p-4 rounded-lg relative bg-white text-gray-900 shadow-sm">
+                              {message.isStreaming && (
+                                <div className="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center">
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                </div>
+                              )}
+
+                              {/* HTML内容渲染或源码显示*/}
+                              {message.htmlContent && message.type === "assistant" && (
+                                <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                  
+                                  {/* 左边：HTML 文件卡片 + 预览按钮 */}
+                                  <div className="flex flex-wrap justify-between bg-blue-50 border border-blue-200 rounded-xl px-4 py-2 w-full sm:w-[48%]">
+                                    <div className="flex items-center gap-2 text-blue-700">
+                                      <Code className="w-5 h-5" />
+                                      <div className="flex flex-col">
+                                        <span className="font-medium text-sm">生成文件.html</span>
+                                        <span className="text-xs text-blue-500">
+                                          Code · {message.htmlContent ? formatHtmlSize(message.htmlContent) : "0 B"}
+                                        </span>
+
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={onToggleHtmlPanel}
+                                      className="text-xs text-blue-600 hover:text-blue-800 underline px-2 py-1 rounded hover:bg-blue-100 transition-colors flex items-center gap-1 whitespace-nowrap"
+                                    >
+                                      <Eye className="w-3 h-3" />
+                                      展开预览
+                                    </button>
+                                  </div>
+
+                                  {/* 右边：查看所有文件按钮 */}
+                                  <button
+                                    onClick={() => setFileModalOpen(true)}
+                                    className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 bg-white hover:bg-gray-100 rounded-xl border border-gray-200 transition-colors w-full sm:w-[48%]"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z" />
+                                    </svg>
+                                    查看所有文件
+                                  </button>
+
+                                </div>
+                              )}
+
+                              <div className="markdown-content whitespace-pre-wrap break-words">
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkMath, remarkGfm]}
+                                  rehypePlugins={[rehypeKatex]}
+                                  components={{
+                                    a: ({ node, ...props }) => (
+                                      <a
+                                        {...props}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-500 hover:underline"
+                                      />
+                                    ),
+                                    code: ({ node, className, children, ...props }) => {
+                                      return (
+                                        <div className="bg-gray-100 dark:bg-gray-900 rounded-md my-1 overflow-x-auto">
+                                          <code className="block p-2 text-sm text-black-100" {...props}>
+                                            {children}
+                                          </code>
+                                        </div>
+                                      )
+                                    },
+                                  }}
+                                >
+                                  {message.answer}
+                                </ReactMarkdown>
+                              </div>
+                            </div>
+                            <div className='text-xs text-gray-500 mt-1 text-left'>
+                              {message.timestamp}
+                            </div>                          
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ),
               )}
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} />
+          </div>
         </ScrollArea>
       </div>
 
-
       {/* 输入区域 */}
-      <div className="p-6 border-t border-gray-200 bg-white rounded-b-xl">
+      <div className="px-6 pb-6 pt-4 max-w-4xl mx-auto w-full">       
         {selectedImage && (
           <div className="mb-4 relative inline-block">
             <img
               src={selectedImage}
               alt="准备发送的图片"
               className="max-h-20 rounded-lg"
-            />
+            />            
             <button
               onClick={removeSelectedImage}
               className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
@@ -764,57 +838,81 @@ const ConversationContent = ({
           </label>
         </div> */}
 
-        {/* 输入框和发送按钮 */}
-        <div className="flex gap-3 items-end">
-          <div className="flex-1">
-            <textarea
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="继续对话..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none min-h-[48px] max-h-32"
-              rows={1}
-            />
+        {/* 主输入容器 */}
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden w-full">
+            <div className="flex items-end p-3 gap-2">
+              {/* 左侧工具按钮 */}
+              <div className="flex items-center flex-shrink-0">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="上传图片"
+                >
+                  <Paperclip className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* 输入框 */}
+              <div className="flex-1 min-w-0">
+                <textarea
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="继续对话..."
+                  className="w-full px-3 py-2 border-0 outline-none resize-none bg-transparent text-gray-900 placeholder-gray-500 min-h-[24px] max-h-32"
+                  rows={1}
+                  style={{
+                    height: "auto",
+                    minHeight: "24px",
+                  }}
+                  onInput={(e) => {
+                    const target = e.target as HTMLTextAreaElement
+                    target.style.height = "auto"
+                    target.style.height = target.scrollHeight + "px"
+                  }}
+                />
+              </div>
+
+              {/* 右侧按钮组 */}
+              <div className="flex items-center flex-shrink-0">
+                {abortController ? (
+                  <button
+                    onClick={() => abortController.abort()}
+                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                  >
+                    停止
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSend}
+                    disabled={!newMessage.trim() && !selectedImage}
+                    className="bg-primary text-white p-2.5 rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="hidden"
-          />
-
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="p-3 text-gray-500 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
-            title="上传图片"
-          >
-            <Image className="w-5 h-5" />
-          </button>
-
-          {abortController ? (
-            <button
-              onClick={() => abortController.abort()}
-              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded ml-2"
-            >
-              停止生成
-            </button>
-          ) : (
-            <button
-              onClick={handleSend}
-              disabled={!newMessage.trim() && !selectedImage}
-              className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <Send className="w-4 h-4" />
-              发送
-            </button>
-          )}
-        </div>
-
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-gray-500 mt-3 text-center">
           支持上传图片，按 Enter 发送，Shift + Enter 换行
         </p>
+
+        <FileModal
+          isOpen={fileModalOpen}
+          onClose={() => setFileModalOpen(false)}
+          files={exampleFiles}
+        />
+
       </div>
     </div>
   );

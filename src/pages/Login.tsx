@@ -60,10 +60,10 @@ const Login = () => {
     }
   };
 
-  const handleGoogleLogin = () => {
-    console.log("Google登录");
-    // 这里可以添加Google登录逻辑
-  };
+  const handleWeChatLogin = () => {
+    console.log("微信登录")
+    // 这里可以添加微信登录逻辑
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
@@ -80,9 +80,13 @@ const Login = () => {
             返回首页
           </button>
           <div className="flex items-center justify-center gap-3 mb-2">
-            <div className="bg-gradient-to-br from-primary to-secondary text-white w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl">
-              A
-            </div>
+            <img
+              src="public\logo.png" 
+              alt="TeacherA Logo"
+              width={60}
+              height={60}
+              className="rounded-full" 
+            />
             <div className="text-2xl font-bold text-primary">TeacherA</div>
           </div>
           <p className="text-gray-500">智能教师助手平台</p>
@@ -194,17 +198,16 @@ const Login = () => {
               </div>
             </div>
 
-            <button
-              onClick={handleGoogleLogin}
+           <button
+              onClick={handleWeChatLogin}
               className="mt-4 w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#07C160">
+                <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 4.882-1.932 7.621-.72-.292-.032-.586-.108-.88-.108C14.611 9.53 10.720 6.242 10.720 2.188zm-3.639 5.165c0-.523.424-.947.947-.947s.947.424.947.947a.95.95 0 0 1-.947.947.95.95 0 0 1-.947-.947zm7.357 0c0-.523.424-.947.947-.947s.947.424.947.947a.95.95 0 0 1-.947.947.95.95 0 0 1-.947-.947z" />
+                <path d="M16.785 8.322c-3.623 0-6.532 2.24-6.532 5.032 0 1.684 1.175 3.215 2.951 4.22a.423.423 0 0 1 .151.474l-.272 1.026c-.014.05-.034.1-.034.151 0 .116.092.21.206.21a.23.23 0 0 0 .118-.038l1.35-.79a.613.613 0 0 1 .509-.07 7.2 7.2 0 0 0 2.013.286c3.623 0 6.532-2.24 6.532-5.032s-2.909-5.032-6.532-5.032zm-2.406 3.76c0-.372.301-.673.673-.673s.673.301.673.673a.675.675 0 0 1-.673.673.675.675 0 0 1-.673-.673zm4.812 0c0-.372.301-.673.673-.673s.673.301.673.673a.675.675 0 0 1-.673.673.675.675 0 0 1-.673-.673z" />
               </svg>
-              使用 Google 账号{isLogin ? '登录' : '注册'}
+              使用微信账号{isLogin ? "登录" : "注册"}
+    
             </button>
           </div>
         </div>
