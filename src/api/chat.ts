@@ -21,7 +21,7 @@ export interface MessageData {
   timestamp: string;
   image?: string;
   // chunks?: string[];
-  durationInSeconds?: number // 新增：思考耗时（秒），可选字段
+  durationInSeconds?: number // 思考耗时（秒），可选字段
 }
 export interface ConversationContentProps {
   conversationId: number;
@@ -29,7 +29,10 @@ export interface ConversationContentProps {
   onDelete: (id: number) => void;
   onFavorite: (id: number) => void;
   isFavorited: boolean;
-  onToggleHtmlPanel?: () => void // 新增：切换HTML预览面板的回调函数
+  onToggleHtmlPanel?: () => void // 切换HTML预览面板的回调函数
+  sidebarCollapsed?: boolean // 侧边栏收起状态
+  onToggleSidebar?: () => void // 切换侧边栏的回调函数
+  onBackToHome?: () => void // 新增：跳转首页的回调函数
 }
 
 export interface MessageQuery {

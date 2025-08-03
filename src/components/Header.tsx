@@ -19,14 +19,14 @@ const Header = () => {
     <header className="bg-gradient-to-r from-primary to-accent px-6 py-4 shadow-[0_4px_20px_rgba(0,0,0,0.08)] flex justify-between items-center sticky top-0 z-50">
       <div className="flex items-center gap-3">
         <img
-            src="public\logo.png" 
+            src="/logo.png" 
             alt="TeacherA Logo"
             width={40}
             height={40}
             className="rounded-full" 
         />
         <div className="text-xl font-bold text-white tracking-tight">
-          TeacherA
+          TeacherA.AI
         </div>
       </div>
       

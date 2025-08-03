@@ -1,16 +1,18 @@
+"use client"
+
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
-import { Heart, Trash2, MoreVertical, Send, ImageIcon, Code, Eye, Loader2, Paperclip } from "lucide-react"
-import { ConversationContentProps, MessageData } from "../api/chat"
+import { Heart, Trash2, MoreVertical, Send, Code, Eye, Loader2, Paperclip, Menu, Plus, Upload, BookOpen, FileImage, CheckSquare, PackageCheck, MailCheck, BadgeCheck, Inbox } from "lucide-react"
+import type { ConversationContentProps, MessageData } from "../api/chat"
 import { ScrollArea } from "./ui/scroll-area"
 import ReactMarkdown from "react-markdown"
 import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import remarkGfm from "remark-gfm"
-import useHtmlStore from "@/store/store" 
-import { ReasoningBlock } from "./ui/reasoning-block" 
+import useHtmlStore from "@/store/store"
+import { ReasoningBlock } from "./ui/reasoning-block"
 import FileModal from "./ui/file-modal"
-
+import { createConversation } from "@/api/conversation"
 
 // 扩展 ConversationContentProps 接口
 interface ExtendedConversationContentProps extends ConversationContentProps {
@@ -18,22 +20,23 @@ interface ExtendedConversationContentProps extends ConversationContentProps {
   hasHtmlContent?: boolean
   showHtmlPreview?: boolean
   onToggleHtmlPreview?: () => void
+  onBackToHome?: () => void //新增prop接收跳转首页的回调
 }
-
 
 const test_data: MessageData[] = [
   {
     id: 1,
-    type: 'user',
-    answer: '请帮我讲解二次函数的基本性质',
-    timestamp: '14:30'
+    type: "user",
+    answer: "请帮我讲解二次函数的基本性质",
+    timestamp: "14:30",
   },
   {
     id: 2,
-    type: 'assistant',
-    reasoning: '好的，我们来复习一下二次函数的基本性质。二次函数的一般形式是 f(x) = ax² + bx + c (a ≠ 0)。\n\n主要性质包括：\n1. 开口方向：当a > 0时开口向上，当a < 0时开口向下\n2. 对称轴：x = -b/(2a)\n3. 顶点坐标：(-b/(2a), (4ac-b²)/(4a))\n4. 最值：当a > 0时有最小值，当a < 0时有最大值',
-    answer: '以上数据均为前端mock数据，正式数据请从后端获取。',
-    timestamp: '14:31',
+    type: "assistant",
+    reasoning:
+      "好的，我们来复习一下二次函数的基本性质。二次函数的一般形式是 f(x) = ax² + bx + c (a ≠ 0)。\n\n主要性质包括：\n1. 开口方向：当a > 0时开口向上，当a < 0时开口向下\n2. 对称轴：x = -b/(2a)\n3. 顶点坐标：(-b/(2a), (4ac-b²)/(4a))\n4. 最值：当a > 0时有最小值，当a < 0时有最大值",
+    answer: "以上数据均为前端mock数据，正式数据请从后端获取。",
+    timestamp: "14:31",
     htmlContent: `
     <!DOCTYPE html>
     <html lang="zh-CN">
@@ -334,67 +337,67 @@ const test_data: MessageData[] = [
   },
   {
     id: 3,
-     type: 'user',
-    answer: '能给我一个具体的例子吗？',
-    timestamp: '14:32'
+    type: "user",
+    answer: "能给我一个具体的例子吗？",
+    timestamp: "14:32",
   },
   {
     id: 4,
-    type: 'assistant',
-    answer: '当然可以！让我们看一个具体例子：f(x) = 2x² - 4x + 1',
-    timestamp: '14:33',
-    durationInSeconds: 19,//test
+    type: "assistant",
+    answer: "当然可以！让我们看一个具体例子：f(x) = 2x² - 4x + 1",
+    timestamp: "14:33",
+    durationInSeconds: 19, //test
   },
 ]
 
-const ConversationContent  = ({
+const ConversationContent = ({
   conversationId,
   title,
   onDelete,
   onFavorite,
   isFavorited,
-  onToggleHtmlPanel, // 新增的prop
-
-}: ConversationContentProps) => {
-  const [showActions, setShowActions] = useState(false);
-  const [newMessage, setNewMessage] = useState("");
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showHtmlSource, setShowHtmlSource] = useState<{ [key: number]: boolean }>({});
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [enableDeepThinking, setEnableDeepThinking] = useState(true);
-
-  
+  onToggleHtmlPanel, 
+  sidebarCollapsed, 
+  onToggleSidebar, 
+  onBackToHome, // 新增：跳转首页的回调
+}:ExtendedConversationContentProps) => {
+  const [showActions, setShowActions] = useState(false)
+  const [newMessage, setNewMessage] = useState("")
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [showHtmlSource, setShowHtmlSource] = useState<{ [key: number]: boolean }>({})
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [enableDeepThinking, setEnableDeepThinking] = useState(true)
 
   // 在现有的 useRef 声明后添加
   const prevHtmlContentRef = useRef<string>("")
 
-   // 从 store 获取状态和方法
-  const { htmlCode, reset } = useHtmlStore();
-  
+  // 从 store 获取状态和方法
+  const { htmlCode, reset } = useHtmlStore()
+
   // 示例重置函数
-  const handleReset = (val:string) => {
+  const handleReset = (val: string) => {
     // 调用 reset 并传入新的 HTML 字符串
-    reset(val);
-  };
+    reset(val)
+  }
 
   // 模拟对话消息数据
-  const [messages, setMessages] = useState<MessageData[]>(test_data);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [messages, setMessages] = useState<MessageData[]>(test_data)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [messages]);
+  }, [messages])
   // 自动滚动到底部
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    scrollToBottom()
+  }, [messages])
 
   useEffect(() => {
     // const fetchData = async () => {
@@ -417,140 +420,168 @@ const ConversationContent  = ({
   }, [conversationId])
 
   const handleDelete = async () => {
-    if (window.confirm('确定要删除这个对话吗？')) {
-      await onDelete(conversationId);
-
+    if (window.confirm("确定要删除这个对话吗？")) {
+      await onDelete(conversationId)
     }
-    setShowActions(false);
-  };
+    setShowActions(false)
+  }
 
   const handleFavorite = () => {
-    onFavorite(conversationId);
-    setShowActions(false);
-  };
+    onFavorite(conversationId)
+    setShowActions(false)
+  }
 
-  const [abortController, setAbortController] = useState<AbortController | null>(null);
-  
+  const [abortController, setAbortController] = useState<AbortController | null>(null)
+
+  // 新建对话处理函数
+  // const handleNewChat = async () => {
+  //   try {
+  //     const newConv = await createConversation({
+  //       title: "新对话",
+  //     })
+  //     // 这里需要调用父组件的新对话处理函数
+  //     // 由于当前组件没有这个回调，可能需要从父组件传递
+  //     console.log("创建新对话:", newConv)
+  //   } catch (error) {
+  //     console.error("创建新对话失败:", error)
+  //   }
+  // }
+
+  // 修改：新建对话处理函数 - 调用跳转首页的函数
+  const handleNewChat = () => {
+    console.log("ConversationContent handleNewChat 函数被调用了！")
+    if (onBackToHome) {
+      console.log("ConversationContent 正在调用 onBackToHome")
+      onBackToHome()
+    } else {
+      console.log("ConversationContent onBackToHome 未定义")
+    }
+  }
+
+
+
   // 删除重复的handleSendMessage函数
   const handleSend = async () => {
-    if (!newMessage.trim() || !conversationId) return;
+    if (!newMessage.trim() || !conversationId) return
 
-    setNewMessage("");
-    setSelectedImage(null);
+    setNewMessage("")
+    setSelectedImage(null)
     // 创建临时消息
-    const tempId = Date.now();
-    setMessages(prev => [...prev, {
-      id: tempId,
-      type: 'user',
-      answer: newMessage,
-      timestamp: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-    }]);
+    const tempId = Date.now()
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: tempId,
+        type: "user",
+        answer: newMessage,
+        timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+      },
+    ])
 
     try {
-      const controller = new AbortController();
-      setAbortController(controller);
-  
+      const controller = new AbortController()
+      setAbortController(controller)
+
       // 流式请求
-      const response = await fetch('/api/v2/chat', {
-        method: 'POST',
+      const response = await fetch("/api/v2/chat", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({
           conversation_id: conversationId,
           prompt: newMessage,
-          deep_thinking: enableDeepThinking  // 使用状态值控制是否开启深度思考
+          deep_thinking: enableDeepThinking, // 使用状态值控制是否开启深度思考
         }),
-        signal: controller.signal
-      });
+        signal: controller.signal,
+      })
 
       // 创建assistant消息
-      const assistantId = Date.now();
-      setMessages(prev => [...prev, {
-        id: assistantId,
-        type: 'assistant',
-        reasoning: '',
-        answer: '',
-        htmlContent: '',
-        timestamp: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-        isStreaming: true
-      }]);
+      const assistantId = Date.now()
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantId,
+          type: "assistant",
+          reasoning: "",
+          answer: "",
+          htmlContent: "",
+          timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+          isStreaming: true,
+        },
+      ])
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let answer = '';
-      let reasoning = '';
-      let htmlContent = '';
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let answer = ""
+      let reasoning = ""
+      let htmlContent = ""
       while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        const { done, value } = await reader.read()
+        if (done) break
 
-        const chunk = decoder.decode(value);
+        const chunk = decoder.decode(value)
 
         // 处理可能包含多个 JSON 对象的情况（以 "data: " 分隔）
-        const dataLines = chunk.split('\n').filter(line => line.trim() !== '');
+        const dataLines = chunk.split("\n").filter((line) => line.trim() !== "")
 
         for (const line of dataLines) {
           try {
             // 确保是以 "data: " 开头的有效行
-            if (!line.startsWith('data: ')) continue;
-            const jsonStr = line.slice(6).trim();
-            if (!jsonStr) continue;
-            const data = JSON.parse(jsonStr);
+            if (!line.startsWith("data: ")) continue
+            const jsonStr = line.slice(6).trim()
+            if (!jsonStr) continue
+            const data = JSON.parse(jsonStr)
             // 处理 type 为 think 的消息
-            if (data.type === 'reasoning') {
-              reasoning += data.content;  // 累积完整内容
-              setMessages(prev =>
-                prev.map(msg =>
+            if (data.type === "reasoning") {
+              reasoning += data.content // 累积完整内容
+              setMessages((prev) =>
+                prev.map((msg) =>
                   msg.id === assistantId
                     ? { ...msg, reasoning: reasoning } // 直接使用累积的完整内容
-                    : msg
-                )
-              );
+                    : msg,
+                ),
+              )
             }
             // 处理 type 为 html_code 的消息
-            if (data.type === 'html_code') {
-              htmlContent += data.content;  // 累积完整内容
-              setMessages(prev =>
-                prev.map(msg =>
+            if (data.type === "html_code") {
+              htmlContent += data.content // 累积完整内容
+              setMessages((prev) =>
+                prev.map((msg) =>
                   msg.id === assistantId
                     ? { ...msg, htmlContent: htmlContent } // 直接使用累积的完整内容
-                    : msg
-                )
-              );
+                    : msg,
+                ),
+              )
             }
             // 处理 type 为 text 的消息
-            if (data.type === 'answer') {
-              answer += data.content;  // 累积完整内容
-              setMessages(prev =>
-                prev.map(msg =>
+            if (data.type === "answer") {
+              answer += data.content // 累积完整内容
+              setMessages((prev) =>
+                prev.map((msg) =>
                   msg.id === assistantId
                     ? { ...msg, answer: answer } // 直接使用累积的完整内容
-                    : msg
-                )
-              );
+                    : msg,
+                ),
+              )
             }
           } catch (error) {
-            console.error('Error parsing line:', error, line);
+            console.error("Error parsing line:", error, line)
           }
         }
       }
 
       // 更新完成状态
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.id === assistantId ? { ...msg, isStreaming: false } : msg
-        )
-      );
+      setMessages((prev) => prev.map((msg) => (msg.id === assistantId ? { ...msg, isStreaming: false } : msg)))
       handleReset(htmlContent)
     } catch (error) {
-      if (error.name !== 'AbortError') {
-        console.error('流式请求异常:', error);
+      if (error.name !== "AbortError") {
+        console.error("流式请求异常:", error)
         // setMessages(prev => prev.filter(msg => msg.id !== tempId));
       }
     } finally {
-      setAbortController(null);
+      setAbortController(null)
       // setMessages(prev => prev.map(msg => {
       //   if (msg.id === tempId) {
       //     return { ...msg, isStreaming: false };
@@ -558,39 +589,39 @@ const ConversationContent  = ({
       //   return msg;
       // }));
     }
-  };
+  }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
     }
-  };
+  }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = e.target.files?.[0]
     if (file) {
-      const reader = new FileReader();
+      const reader = new FileReader()
       reader.onload = (e) => {
-        setSelectedImage(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+        setSelectedImage(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
     }
-  };
+  }
 
   const removeSelectedImage = () => {
-    setSelectedImage(null);
+    setSelectedImage(null)
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = ""
     }
-  };
+  }
 
   const toggleHtmlSource = (messageId: number) => {
-    setShowHtmlSource(prev => ({
+    setShowHtmlSource((prev) => ({
       ...prev,
-      [messageId]: !prev[messageId]
-    }));
-  };
+      [messageId]: !prev[messageId],
+    }))
+  }
 
   // 监听HTML内容变化，自动显示预览面板
   useEffect(() => {
@@ -612,18 +643,17 @@ const ConversationContent  = ({
     }
   }, [messages, onToggleHtmlPanel])
 
-
   //计算html大小
   const formatHtmlSize = (html: string): string => {
-    const sizeInBytes = new Blob([html]).size;
+    const sizeInBytes = new Blob([html]).size
     if (sizeInBytes < 1024) {
-      return `${sizeInBytes} B`;
+      return `${sizeInBytes} B`
     } else if (sizeInBytes < 1024 * 1024) {
-      return `${(sizeInBytes / 1024).toFixed(2)} KB`;
+      return `${(sizeInBytes / 1024).toFixed(2)} KB`
     } else {
-      return `${(sizeInBytes / (1024 * 1024)).toFixed(2)} MB`;
+      return `${(sizeInBytes / (1024 * 1024)).toFixed(2)} MB`
     }
-  };
+  }
 
   //显示所有文件
   const [fileModalOpen, setFileModalOpen] = useState(false)
@@ -636,14 +666,40 @@ const ConversationContent  = ({
     {
       name: "trigonometric_functions.html",
       type: "code",
-      date: "Thursday"
-    }
+      date: "Thursday",
+    },
   ]
 
-
-
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
+      {/* 新增：当侧边栏收起时，显示汉堡菜单按钮和新对话按钮，添加背景遮盖 */}
+      {sidebarCollapsed && (
+        <div className="absolute top-6 left-6 z-10">
+          {/* 添加背景遮罩 */}
+          <div className="absolute inset-0 bg-white/90 backdrop-blur-sm rounded-xl -m-2"></div>
+          <div className="relative flex items-center gap-3">
+            <button
+              onClick={onToggleSidebar}
+              className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0 bg-white shadow-sm border border-gray-200"
+              title="展开侧边栏"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => {
+                console.log("ConversationContent 按钮被点击了！")
+                handleNewChat()
+              }}
+              className="bg-gradient-to-r from-primary to-accent text-white border-none px-5 py-2.5 rounded-xl font-medium cursor-pointer transition-all duration-300 flex items-center gap-2 shadow-[0_4px_12px_rgba(67,97,238,0.3)] hover:transform hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(67,97,238,0.4)] justify-center text-base"
+              style={{ minWidth: "140px" }}
+            >
+              <Plus className="w-5 h-5 flex-shrink-0" />
+              <span className="whitespace-nowrap">发起新对话</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 对话标题和操作按钮 */}
       <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white rounded-t-xl">
         <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
@@ -659,14 +715,15 @@ const ConversationContent  = ({
             </button>
 
             {showActions && (
-            <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-10 min-w-[120px]">
-              <button
-                onClick={handleFavorite}
-                className={`w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-gray-50 rounded-t-lg ${isFavorited ? 'text-red-500' : 'text-gray-700'
+              <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-10 min-w-[120px]">
+                <button
+                  onClick={handleFavorite}
+                  className={`w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-gray-50 rounded-t-lg ${
+                    isFavorited ? "text-red-500" : "text-gray-700"
                   }`}
-              >
-                <Heart className={`w-4 h-4 ${isFavorited ? 'fill-current' : ''}`} />
-                {isFavorited ? '取消收藏' : '收藏'}
+                >
+                  <Heart className={`w-4 h-4 ${isFavorited ? "fill-current" : ""}`} />
+                  {isFavorited ? "取消收藏" : "收藏"}
                 </button>
                 <button
                   onClick={handleDelete}
@@ -685,26 +742,31 @@ const ConversationContent  = ({
       <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
         <ScrollArea ref={scrollRef} className="flex-1 p-4">
           <div className="max-w-4xl mx-auto space-y-6">
-            {messages && messages.map((message) => (
-              message &&
-              <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {/* 用户消息 */}
-                {message.type === 'user' ? (
-                  <div className="max-w-[80%]">
-                    {/* 用户上传的图片 */}
-                    {message.image && (
-                      <img
-                        src={message.image}
-                        alt="上传的图片"
-                        className="max-w-full h-auto rounded-lg mb-2"
-                      />
-                    )}
-                    <div className="p-4 rounded-lg relative bg-primary text-white shadow-sm">{message.answer}</div>
-                    <div className='text-xs text-gray-500 mt-1 text-right'>
-                      {message.timestamp}
-                    </div>
-                  </div>
-                ) : (
+            {messages &&
+              messages.map(
+                (message) =>
+                  message && (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      {/* 用户消息 */}
+                      {message.type === "user" ? (
+                        <div className="max-w-[80%]">
+                          {/* 用户上传的图片 */}
+                          {message.image && (
+                            <img
+                              src={message.image || "/placeholder.svg"}
+                              alt="上传的图片"
+                              className="max-w-full h-auto rounded-lg mb-2"
+                            />
+                          )}
+                          <div className="p-4 rounded-lg relative bg-primary text-white shadow-sm">
+                            {message.answer}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1 text-right">{message.timestamp}</div>
+                        </div>
+                      ) : (
                         <div className="flex-1">
                           {/* 深度思考部分 */}
                           {message.reasoning && (
@@ -727,7 +789,6 @@ const ConversationContent  = ({
                               {/* HTML内容渲染或源码显示*/}
                               {message.htmlContent && message.type === "assistant" && (
                                 <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                  
                                   {/* 左边：HTML 文件卡片 + 预览按钮 */}
                                   <div className="flex flex-wrap justify-between bg-blue-50 border border-blue-200 rounded-xl px-4 py-2 w-full sm:w-[48%]">
                                     <div className="flex items-center gap-2 text-blue-700">
@@ -737,7 +798,6 @@ const ConversationContent  = ({
                                         <span className="text-xs text-blue-500">
                                           Code · {message.htmlContent ? formatHtmlSize(message.htmlContent) : "0 B"}
                                         </span>
-
                                       </div>
                                     </div>
                                     <button
@@ -755,12 +815,21 @@ const ConversationContent  = ({
                                     className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 bg-white hover:bg-gray-100 rounded-xl border border-gray-200 transition-colors w-full sm:w-[48%]"
                                   >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z" />
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"
+                                      />
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"
+                                      />
                                     </svg>
                                     查看所有文件
                                   </button>
-
                                 </div>
                               )}
 
@@ -792,9 +861,7 @@ const ConversationContent  = ({
                                 </ReactMarkdown>
                               </div>
                             </div>
-                            <div className='text-xs text-gray-500 mt-1 text-left'>
-                              {message.timestamp}
-                            </div>                          
+                            <div className="text-xs text-gray-500 mt-1 text-left">{message.timestamp}</div>
                           </div>
                         </div>
                       )}
@@ -806,116 +873,86 @@ const ConversationContent  = ({
         </ScrollArea>
       </div>
 
-      {/* 输入区域 */}
-      <div className="px-6 pb-6 pt-4 max-w-4xl mx-auto w-full">       
-        {selectedImage && (
-          <div className="mb-4 relative inline-block">
-            <img
-              src={selectedImage}
-              alt="准备发送的图片"
-              className="max-h-20 rounded-lg"
-            />            
+      {/* 新增：输入区域 */}
+      <div className="px-6 pb-6 pt-4 max-w-4xl mx-auto w-full">
+        {/* 主输入容器 */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 w-full">
+          {/* 顶部工具栏 */}
+          <div className="flex items-center gap-6 p-4">
             <button
-              onClick={removeSelectedImage}
-              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors text-sm"
+              title="上传试题"
             >
-              ×
+              <FileImage className="w-4 h-4"/>
+              上传试题
+            </button>
+
+            <button
+              onClick={() => {
+                console.log("选择知识点")
+              }}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors text-sm"
+              title="选择知识点"
+            >
+              <Inbox className="w-4 h-4" />
+              选择知识点
             </button>
           </div>
-        )}
 
-        {/* 新增深度思考勾选框 */}
-        {/* <div className="flex items-center mb-3">
-          <input
-            type="checkbox"
-            id="deepThinkingCheckbox"
-            checked={enableDeepThinking}
-            onChange={(e) => setEnableDeepThinking(e.target.checked)}
-            className="w-4 h-4 text-primary rounded focus:ring-primary/20"
-          />
-          <label htmlFor="deepThinkingCheckbox" className="ml-2 text-sm text-gray-600 cursor-pointer">
-            开启GGB代码生成
-          </label>
-        </div> */}
+          {/* 分割线 */}
+          <div className="h-px bg-gray-200"></div>
 
-        {/* 主输入容器 */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden w-full">
-            <div className="flex items-end p-3 gap-2">
-              {/* 左侧工具按钮 */}
-              <div className="flex items-center flex-shrink-0">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
+          {/* 输入框和发送按钮 */}
+          <div className="flex items-end gap-3 p-4">
+            {/* 输入框 */}
+            <div className="flex-1 min-w-0">
+              <textarea
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="输入你想要讨论的问题或者话题，直接开始对话或者的问题化分析"
+                className="w-full px-0 py-2 border-0 outline-none resize-none bg-transparent text-gray-900 placeholder-gray-400 text-sm leading-normal min-h-[40px] max-h-32"
+                rows={2}
+                style={{
+                  height: "40px",
+                  lineHeight: "1.4",
+                }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement
+                  target.style.height = "40px"
+                  target.style.height = Math.min(target.scrollHeight, 128) + "px"
+                }}
+              />
+            </div>
 
+
+            {/* 右侧按钮组 */}
+            <div className="flex items-center flex-shrink-0">
+              {abortController ? (
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                  title="上传图片"
+                  onClick={() => abortController.abort()}
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
                 >
-                  <Paperclip className="w-5 h-5" />
+                  停止
                 </button>
-              </div>
-
-              {/* 输入框 */}
-              <div className="flex-1 min-w-0">
-                <textarea
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="继续对话..."
-                  className="w-full px-3 py-2 border-0 outline-none resize-none bg-transparent text-gray-900 placeholder-gray-500 min-h-[24px] max-h-32"
-                  rows={1}
-                  style={{
-                    height: "auto",
-                    minHeight: "24px",
-                  }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement
-                    target.style.height = "auto"
-                    target.style.height = target.scrollHeight + "px"
-                  }}
-                />
-              </div>
-
-              {/* 右侧按钮组 */}
-              <div className="flex items-center flex-shrink-0">
-                {abortController ? (
-                  <button
-                    onClick={() => abortController.abort()}
-                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-                  >
-                    停止
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleSend}
-                    disabled={!newMessage.trim() && !selectedImage}
-                    className="bg-primary text-white p-2.5 rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
+              ) : (
+                <button
+                  onClick={handleSend}
+                  disabled={!newMessage.trim() && !selectedImage}
+                  className="bg-primary text-white p-2.5 rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
+        </div>
 
-        <p className="text-xs text-gray-500 mt-3 text-center">
-          支持上传图片，按 Enter 发送，Shift + Enter 换行
-        </p>
-
-        <FileModal
-          isOpen={fileModalOpen}
-          onClose={() => setFileModalOpen(false)}
-          files={exampleFiles}
-        />
-
+        <FileModal isOpen={fileModalOpen} onClose={() => setFileModalOpen(false)} files={exampleFiles} />
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ConversationContent;
+export default ConversationContent
